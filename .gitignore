@@ -1,4 +1,2 @@
 *.pyc
-*.swp
-*.swo
-*.swn
+*.sw[p|o|n]

@@ -10,7 +10,10 @@ if __name__ == '__main__':
   parser = OptionParser()
   parser.add_option('-p', '--port', action='store', dest='port')
   parser.add_option('-b', '--baudrate', action='store', dest='baudrate')
-  parser.add_option('-b', '--baudrate', action='store', dest='baudrate')
   options, args = parser.parse_args(sys.argv)
 
-  RC = roboteq_controller.RoboteqController(options.port, options.baudrate)
+  port = options.port or '/dev/ttyACM0'
+  baudrate = options.baudrate or '115200'
+
+  RC = roboteq_controller.RoboteqController(port, baudrate)
+  print RC.runtime_query('C', motor_channel=1)

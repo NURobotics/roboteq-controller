@@ -10,9 +10,8 @@ class RoboteqController(object):
   
   def __init__(self, port='/dev/ttyACM0', baudrate=115200):
     try:
-      self.serial = serial.Serial()
+      self.serial = serial.Serial(timeout=RoboteqController.CONTROLLER_TIMEOUT)
       self.serial.port = port
-      self.serial.setTimeout(RoboteqController.CONTROLLER_TIMEOUT)
       self.serial.baudrate = baudrate
       self.serial.open()
       self.serial_wrapper = io.TextIOWrapper(io.BufferedRWPair(self.serial, self.serial), newline='\r', line_buffering=True)
@@ -119,7 +118,7 @@ class RoboteqController(object):
     self._write('^%s %s\r' % (name, str(value)))
 
   def get_configuration(self, name):
-    self._write('^%r\r' % name)
+    self._write('^%s\r' % str(name))
     return self._parse_response(self._read_response())
   
   def set_motor_angle(self, angle):
