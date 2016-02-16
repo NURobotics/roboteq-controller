@@ -13,9 +13,11 @@
 #include <string>
 
 #define READ_BUFFER_SIZE  50
+#define MAX_RETRIES       10
 
 #include <myd_serial.h>
 
+using std::cout;
 using std::cerr;
 using std::endl;
 
@@ -53,6 +55,7 @@ bool MydSerial::Open(const int fd,
                      const char parity,
                      const int stop_bits)
 {
+  cout << "MydSerial::Open for MYD_BOARD" << endl;
   fd_ = fd;
   
   memset(&prev_tio_, 0, sizeof(prev_tio_));
@@ -141,6 +144,7 @@ bool MydSerial::Open(const std::string& port,
                      const char parity,
                      const int stop_bits)
 {
+  cout << "MydSerial::Open" << endl;
   // Open port and obtains file descriptor.
   const int fd = open(const_cast<char*>(port.c_str()), O_RDWR);
   if (fd < 0) {
@@ -163,8 +167,11 @@ bool MydSerial::Open(const std::string& port,
 
 bool MydSerial::Close()
 {
+  cout << "MydSerial::Close" << endl;
   if (fd_ >= 0) {
+#ifdef MYD_BOARD
     tcsetattr(fd_, TCSANOW, &prev_tio_);
+#endif // MYD_BOARD
     const int close_code = close(fd_);
     fd_ = -1;
     if (close_code != 0) {
@@ -176,8 +183,9 @@ bool MydSerial::Close()
   return false;
 }
 
-bool MydSerial::Write(std::string data)
+bool MydSerial::Write(const std::string &data)
 {
+  cout << "MydSerial::Write" << endl;
   if (fd_ < 0) {
     cerr << "MydSerial::Write: File descriptor not initialized";
     return false;
@@ -194,11 +202,13 @@ bool MydSerial::Write(std::string data)
     total_written += written_bytes;
   }
 
+  cout << "Wrote " << total_written << " bytes of " << data << endl;
   return total_bytes == total_written;
 }
 
 int MydSerial::Read(std::string *buffer)
 {
+  cout << "MydSerial::Read" << endl;
   if (fd_ < 0) {
     cerr << "MydSerial::Write: File descriptor not initialized";
     return false;
@@ -207,28 +217,53 @@ int MydSerial::Read(std::string *buffer)
   int read_bytes = 0;
   static char temp_buffer[READ_BUFFER_SIZE+1];
   while ((read_bytes = read(fd_, temp_buffer, READ_BUFFER_SIZE)) > 0) {
-    buffer->append(temp_buffer);
+    buffer->append(temp_buffer, read_bytes);
   }
 
   return read_bytes == 0; 
 }
 
-bool MydSerial::ReadUntilChar(const char delimiter, std::string *read_buffer)
+bool MydSerial::ReadUntilChar(const std::string &delimiters, std::string *read_buffer)
 {
+  cout << "MydSerial::ReadUntilChar " << delimiters << endl;
   if (fd_ < 0) {
-    cerr << "MydSerial::Write: File descriptor not initialized";
+    cerr << "MydSerial::Write: File descriptor not initialized" << endl;
+    return false;
+  }
+
+  if (delimiters.size() == 0) {
+    cerr << "MydSerial::Write: Must have more than 0 delimiters" << endl;
     return false;
   }
   
+  read_buffer->clear();
   static char temp_buffer[READ_BUFFER_SIZE+1];
   int read_bytes = 0;
-  while (read_bytes = read(fd_, temp_buffer, 1) > 0) {
-    read_buffer->append(temp_buffer);
-    if (read_buffer->size() > 0 && 
-        read_buffer->at(read_buffer->size()-1) == delimiter) {
+  int num_retries = 0;
+  while ((read_bytes = read(fd_, temp_buffer, 1)) >= 0 && num_retries < MAX_RETRIES) {
+    if (read_bytes == 0) {
+      num_retries++;
+      continue;
+    }
+
+    num_retries = 0;
+    read_buffer->append(temp_buffer, read_bytes);
+    cout << "[read_buffer=" << (*read_buffer)
+         << ", last_char=" << (int) read_buffer->at(read_buffer->size()-1)
+         << ", num_retries=" << num_retries
+         << ", delim_location=" << delimiters.find(read_buffer->at(read_buffer->size()-1))
+         << ", delimiters=" << delimiters << "]" << endl;
+    if (read_buffer->size() > 0 &&
+        delimiters.find(read_buffer->at(read_buffer->size()-1)) != std::string::npos) {
       return true;
     }
   }
+
+  cout << "[read_buffer=" << (*read_buffer)
+       << ", read_bytes=" << read_bytes
+       << ", errno=" << errno
+       << ", num_retries=" << num_retries
+       << "]" << endl;
 
   return false;
 }

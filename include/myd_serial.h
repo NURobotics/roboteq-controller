@@ -28,9 +28,9 @@ public:
   
   bool Close();
 
-  bool Write(std::string data);
+  bool Write(const std::string &data);
   int Read(std::string *buffer);
-  bool ReadUntilChar(const char delimiter, std::string *buffer);
+  bool ReadUntilChar(const std::string &delimiters, std::string *buffer);
 
 private:
   std::string port_;
