@@ -58,9 +58,7 @@ public:
     return (ok_) ? myd_serial_.Write(kCmdHeader + cmd + kTrailer) : false;
   }
 
-  bool send_query(const std::string &query) {
-    return (ok_) ? myd_serial_.Write(kQueryHeader + query + kTrailer) : false;
-  }
+  bool send_query(const std::string &query, std::string *value);
 
   bool set_configuration(const std::string &config) {
     return (ok_) ? myd_serial_.Write(kSetConfigHeader + config + kTrailer) : false;

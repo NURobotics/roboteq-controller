@@ -134,3 +134,19 @@ bool RoboteqController::get_configuration(const string &name, std::string *value
 
   return true;
 }
+
+bool RoboteqController::send_query(const std::string &query, std::string *value)
+{
+  if (!myd_serial_.Write(kQueryHeader + query + kTrailer)) {
+    cerr << "RoboteqController::send_query: Failed to write" << endl;
+    return false;
+  }
+
+  value->clear();
+  if (!myd_serial_.ReadUntilChar(kDelimiters, value)) {
+    cerr << "RoboteqController::get_configuration: Couldn't read until delimiters" << endl;
+    return false;
+  }
+
+  return true;
+}
