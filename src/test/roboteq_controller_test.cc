@@ -3,44 +3,41 @@
 #include <unistd.h>
 
 #include <string>
+#include <sstream>
+#include <iostream>
 
 #include <roboteq_controller.h>
 
-using std::string;
+using namespace std;
 
-const string kTestPort = "/dev/ttyACM0";
-const int kTestBaudrate = 9600;
+const string kTestPort = "/dev/ttyO2";
+const int kTestBaudrate = 115200;
 const int kTestMotorChannel = 1;
 const int kTestEncoderChannel = 1;
-const string kEchofResponse = "+";
 
-int main(int argc, char **argv)
-{
-  setbuf(stdout, NULL);
-  RoboteqController test_controller(kTestPort, kTestBaudrate);
-  
-  assert(test_controller.set_echo(true)); 
-  assert(test_controller.set_encoder_usage(kTestEncoderChannel,
-                                           kTestMotorChannel,
-                                           RoboteqController::FEEDBACK));
-  assert(test_controller.set_encoder_ppr(kTestEncoderChannel, 1250));
-  assert(test_controller.set_encoder_home());
-  assert(test_controller.set_amp_limit(kTestMotorChannel, 50));
-  assert(test_controller.set_proportional_gain(kTestMotorChannel, 100));
-  assert(test_controller.set_integral_gain(kTestMotorChannel, 100));
-  assert(test_controller.set_differential_gain(kTestMotorChannel, 100));
-  assert(test_controller.set_motor_acceleration(kTestMotorChannel, 100));
-  assert(test_controller.set_motor_decceleration(kTestMotorChannel, 100));
-  assert(test_controller.set_operating_mode(
-    kTestMotorChannel,
-    RoboteqController::CLOSED_LOOP_POSITION_TRACKING));
-  assert(test_controller.set_default_position_velocity(kTestMotorChannel, 10));
-  assert(test_controller.set_max_rpm(kTestMotorChannel, 3000));
-
-  string value_buffer;
-  assert(test_controller.get_configuration("ECHOF", &value_buffer));
-  assert(value_buffer.substr(0, value_buffer.size()-1) == kEchofResponse);
-  printf("SUCCESS\n");
-
-  return 0;
+int main(int argc, char **argv){
+	RoboteqController test_controller = RoboteqController(kTestPort, kTestBaudrate);
+  assert(test_controller.set_echo(false));
+  assert(test_controller.reset_factory_conditions());
+  assert(test_controller.set_echo(false));
+	assert(test_controller.set_encoder_high_count_limit(kTestEncoderChannel, 10000));
+	assert(test_controller.set_encoder_low_count_limit(kTestEncoderChannel, -10000));
+	assert(test_controller.set_encoder_usage(kTestEncoderChannel, kTestMotorChannel, RoboteqController::FEEDBACK));
+	assert(test_controller.set_encoder_ppr(kTestEncoderChannel, 1250));
+	assert(test_controller.set_amp_limit(kTestMotorChannel, 180));
+	assert(test_controller.set_amp_trigger_level(kTestMotorChannel, 150));
+	assert(test_controller.set_amp_trigger_delay(kTestMotorChannel, 1000));
+	assert(test_controller.set_amp_trigger_action(kTestMotorChannel, RoboteqController::SAFETY_STOP));
+	assert(test_controller.set_closed_loop_error_detection(kTestMotorChannel, RoboteqController::ERROR_AT_500MS));
+	assert(test_controller.set_differential_gain(kTestMotorChannel, 0));
+	assert(test_controller.set_integral_gain(kTestMotorChannel, 0));
+	assert(test_controller.set_proportional_gain(kTestMotorChannel, 20));
+	assert(test_controller.set_motor_acceleration(kTestMotorChannel, 170));
+	assert(test_controller.set_motor_decceleration(kTestMotorChannel, 170));
+	assert(test_controller.set_default_position_velocity(kTestMotorChannel, 100));
+	assert(test_controller.set_max_rpm(kTestMotorChannel, 100));
+  assert(test_controller.motor_position_mode_velocity_command(1, 100));
+	assert(test_controller.set_operating_mode(kTestMotorChannel, RoboteqController::OPEN_LOOP_SPEED));
+  assert(test_controller.set_encoder_count(kTestEncoderChannel, 0));
+	assert(test_controller.set_operating_mode(kTestMotorChannel, RoboteqController::CLOSED_LOOP_COUNT_POSITION));
 }

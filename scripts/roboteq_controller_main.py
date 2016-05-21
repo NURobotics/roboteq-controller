@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Requires further development.
+# Use the C++ library instead until then.
 
 import sys
 

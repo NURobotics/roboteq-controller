@@ -8,7 +8,7 @@
 
 class MydSerial {
 public:
-  static const std::map<int, int> kBaudRateFlags;
+  static const std::map<int, tcflag_t> kBaudRateFlags;
 
   MydSerial() : fd_(-1) {}
 

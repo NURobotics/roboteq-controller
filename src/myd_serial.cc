@@ -13,7 +13,7 @@
 #include <string>
 
 #define READ_BUFFER_SIZE  50
-#define MAX_RETRIES       10
+#define MAX_RETRIES       1000
 
 #include <myd_serial.h>
 
@@ -21,9 +21,9 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-static std::map<int, int> GenerateBaudRateFlags()
+static std::map<int, tcflag_t> GenerateBaudRateFlags()
 {
-  std::map<int, int> BaudRateFlags;
+  std::map<int, tcflag_t> BaudRateFlags;
   BaudRateFlags[0] = B0;
   BaudRateFlags[50] = B50;
   BaudRateFlags[75] = B75;
@@ -46,7 +46,7 @@ static std::map<int, int> GenerateBaudRateFlags()
   return BaudRateFlags;
 }
 
-const std::map<int, int> MydSerial::kBaudRateFlags = GenerateBaudRateFlags();
+const std::map<int, tcflag_t> MydSerial::kBaudRateFlags = GenerateBaudRateFlags();
 
 #ifdef MYD_BOARD
 bool MydSerial::Open(const int fd,
@@ -59,7 +59,7 @@ bool MydSerial::Open(const int fd,
   fd_ = fd;
   
   memset(&prev_tio_, 0, sizeof(prev_tio_));
-  if (!tcgetattr(fd_, &prev_tio_)) {
+  if (tcgetattr(fd_, &prev_tio_) != 0) {
     cerr << "MydSerial::Open: Could not obtain previous serial port" << endl;
     return false;
   }
@@ -67,9 +67,10 @@ bool MydSerial::Open(const int fd,
   memset(&current_tio_, 0, sizeof(current_tio_));
 
   // ignore modem control lines and enable receiver
-  current_tio_.c_cflag |= CLOCAL | CREAD;
+  current_tio_.c_cflag = current_tio_.c_cflag |= CLOCAL | CREAD;
+  current_tio_.c_cflag &= ~CSIZE;
   if (char_size <= 8 && char_size >= 5) {
-    static const char char_size_flags[] = {
+    static const tcflag_t char_size_flags[] = {
       CS5,
       CS6,
       CS7,
@@ -85,13 +86,16 @@ bool MydSerial::Open(const int fd,
   switch (parity) {
     case 'o':
     case 'O': {
-      current_tio_.c_cflag |= PARENB | PARODD | INPCK | ISTRIP;
+      current_tio_.c_cflag |= PARENB;
+      current_tio_.c_cflag |= PARODD;
+      current_tio_.c_cflag |= (INPCK | ISTRIP);
       break;
     }
     case 'e':
     case 'E': {
-      current_tio_.c_cflag |= PARENB | INPCK | ISTRIP; 
+      current_tio_.c_cflag |= PARENB;
       current_tio_.c_cflag &= ~PARODD;
+      current_tio_.c_cflag |= (INPCK | ISTRIP); 
       break;
     }
     case 'n':
@@ -103,13 +107,13 @@ bool MydSerial::Open(const int fd,
   }
 
   // stop bit flag
-  if (parity == 2) {
+  if (stop_bits == 2) {
     current_tio_.c_cflag |= CSTOPB;
   } else {
-    current_tio_.c_cflag &= CSTOPB;
+    current_tio_.c_cflag &= ~CSTOPB;
   }
 
-  std::map<int, int>::const_iterator baud_iter =
+  std::map<int, tcflag_t>::const_iterator baud_iter =
     MydSerial::kBaudRateFlags.find(baud_rate);
   if (kBaudRateFlags.end() != baud_iter) {
     // Found correct flag
@@ -148,7 +152,7 @@ bool MydSerial::Open(const std::string& port,
   // Open port and obtains file descriptor.
   const int fd = open(const_cast<char*>(port.c_str()), O_RDWR);
   if (fd < 0) {
-    perror("MydSerial::Open: Could not open serial port");
+    cerr << "MydSerial::Open: Could not open serial port" << endl;
     return false;
   }
 
@@ -175,7 +179,7 @@ bool MydSerial::Close()
     const int close_code = close(fd_);
     fd_ = -1;
     if (close_code != 0) {
-      perror("MydSerial::Close: Failed to close");
+      cerr << "MydSerial::Close: Failed to close" << endl;
       return false;
     }
     return true;

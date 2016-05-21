@@ -1,3 +1,5 @@
+# Requires further development.
+# Use the C++ library instead until then.
 import io
 import serial
 import time
@@ -14,7 +16,7 @@ class RoboteqController(object):
       self.serial.port = port
       self.serial.baudrate = baudrate
       self.serial.open()
-      self.serial_wrapper = io.TextIOWrapper(io.BufferedRWPair(self.serial, self.serial), newline='\r', line_buffering=True)
+      self.serial_wrapper = io.TextIOWrapper(io.BufferedRWPair(self.serial, self.serial), newline='\r\n', line_buffering=True)
     except serial.SerialException as serial_error:
       print serial_error 
 

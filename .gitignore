@@ -1,3 +1,4 @@
 *.pyc
 *.sw[p|o|n]
 bin/*
+!bin/.gitignore

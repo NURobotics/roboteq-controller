@@ -1,3 +1,6 @@
+# Requires further development.
+# Use the C++ library instead until then.
+
 RUNTIME_COMMANDS = {
   'AC': (['motor_channel', 'acceleration'], 'Set Acceleration'),
   'AX': (['motor_channel', 'acceleration'], 'Next Acceleration'),

@@ -15,8 +15,10 @@ const string RoboteqController::kCmdHeader = "!";
 const string RoboteqController::kQueryHeader = "?";
 const string RoboteqController::kSetConfigHeader = "^";
 const string RoboteqController::kGetConfigHeader = "~";
-const string RoboteqController::kTrailer = "\r";
+const string RoboteqController::kFlashSettingHeader = "%";
+const string RoboteqController::kTrailer = "\r\n";
 const string RoboteqController::kDelimiters = "\r\n";
+const int RoboteqController::kSafetyKey = 321654987;
 
 RoboteqController::RoboteqController(const string& port, const int baud_rate)
 {
@@ -27,10 +29,61 @@ RoboteqController::RoboteqController(const string& port, const int baud_rate)
   }
 }
 
+bool RoboteqController::get_echo(bool *echo)
+{
+  string echof_setting;
+  if (!get_configuration("ECHOF", &echof_setting)) {
+    cerr << "RoboteqController::get_echo: Failed to get echo" << endl;
+    return false;
+  }
+
+  if (echof_setting.substr(0, echof_setting.size()-1) == "ECHOF=0") {
+    *echo = true;
+  } else if (echof_setting.substr(0, echof_setting.size()-1) == "ECHOF=1") {
+    *echo = false;
+  } else if (echof_setting.substr(0, echof_setting.size()-1) == "~ECHOF") {
+    if (!myd_serial_.ReadUntilChar(kDelimiters, &echof_setting)) {
+      return false;
+    }
+
+    if (echof_setting.substr(0, echof_setting.size()-1) == "ECHOF=0") {
+      *echo = true;
+    } else if (echof_setting.substr(0, echof_setting.size()-1) == "ECHOF=1") {
+      *echo = false;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool RoboteqController::set_echo(const bool on)
 {
-  string echof = "ECHOF ";
-  return set_configuration(echof + ((on) ? "0" : "1"));
+  bool echo = true;
+  if (!get_echo(&echo)) {
+    cerr << "RoboteqController::set_echo: Failed to get echo" << endl;
+    return false;
+  }
+
+  if (echo) {
+    stringstream ss;
+    ss << kSetConfigHeader << "ECHOF 1";
+    const string echo_config = ss.str();
+    ss << kTrailer;
+    if (!myd_serial_.Write(ss.str())) {
+      return false;
+    }
+
+    string echof_response;
+    if (!myd_serial_.ReadUntilChar(kDelimiters, &echof_response)) {
+      return false;
+    }
+
+    if (echof_response.substr(0, echof_response.size()-1) != echo_config) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool RoboteqController::set_encoder_usage(const int encoder_channel,
@@ -38,7 +91,8 @@ bool RoboteqController::set_encoder_usage(const int encoder_channel,
                                           const EncoderMode usage_mode)
 {
   stringstream ss;
-  ss << "EMOD " << encoder_channel << " " << (usage_mode + motor_channel);
+  const int value = ((motor_channel == 1) ? 16 : 32) + ((int)usage_mode);
+  ss << "EMOD " << encoder_channel << " " << value;
   return set_configuration(ss.str());
 }
 
@@ -49,15 +103,41 @@ bool RoboteqController::set_encoder_ppr(const int encoder_channel, const int ppr
   return set_configuration(ss.str());
 }
 
-bool RoboteqController::set_encoder_home()
-{
-  return set_configuration("EHOME");
-}
-
 bool RoboteqController::set_amp_limit(const int motor_channel, const int amp_limit)
 {
   stringstream ss;
   ss << "ALIM " << motor_channel << " " << amp_limit;
+  return set_configuration(ss.str());
+}
+
+bool RoboteqController::set_amp_trigger_level(const int motor_channel, const int amp_trigger_level)
+{
+  stringstream ss;
+  ss << "ATRIG " << motor_channel << " " << amp_trigger_level;
+  return set_configuration(ss.str());
+}
+
+bool RoboteqController::set_amp_trigger_delay(const int motor_channel, const int amp_trigger_delay)
+{
+  stringstream ss;
+  ss << "ATGD " << motor_channel << " " << amp_trigger_delay;
+  return set_configuration(ss.str());
+}
+
+bool RoboteqController::set_amp_trigger_action(
+  const int motor_channel,
+  const DigitalInputAction digital_input_action)
+{
+  stringstream ss;
+  const int trigger_action = ((motor_channel == 1) ? 16 : 32) + ((int)digital_input_action);
+  ss << "ATGA " << motor_channel << " " << trigger_action;
+  return set_configuration(ss.str());
+}
+
+bool RoboteqController::set_closed_loop_error_detection(const int motor_channel, const ClosedLoopErrorDetection clerd)
+{
+  stringstream ss;
+  ss << "CLERD " << motor_channel << " " << clerd;
   return set_configuration(ss.str());
 }
 
@@ -93,6 +173,20 @@ bool RoboteqController::set_motor_decceleration(const int motor_channel, const i
 {
   stringstream ss;
   ss << "MDEC " << motor_channel << " " << deccel;
+  return set_configuration(ss.str());
+}
+
+bool RoboteqController::set_encoder_high_count_limit(const int encoder_channel, int encoder_count_limit)
+{
+  stringstream ss;
+  ss << "EHL " << encoder_channel << " " << encoder_count_limit;
+  return set_configuration(ss.str());
+}
+
+bool RoboteqController::set_encoder_low_count_limit(const int encoder_channel, int encoder_count_limit)
+{
+  stringstream ss;
+  ss << "ELL " << encoder_channel << " " << encoder_count_limit;
   return set_configuration(ss.str());
 }
 
@@ -133,6 +227,27 @@ bool RoboteqController::get_configuration(const string &name, std::string *value
   }
 
   return true;
+}
+
+bool RoboteqController::set_encoder_count(const int encoder_channel, const int encoder_count)
+{
+  stringstream ss;
+  ss << "C " << encoder_channel << " " << encoder_count;
+  return send_command(ss.str());
+}
+
+bool RoboteqController::motor_position_mode_velocity_command(const int motor_channel, const int rpm)
+{
+  stringstream ss;
+  ss << "S " << motor_channel << " " << rpm;
+  return send_command(ss.str());
+}
+
+bool RoboteqController::motor_absolute_position_command(const int motor_channel, const int count)
+{
+  stringstream ss;
+  ss << "P " << motor_channel << " " << count;
+  return send_command(ss.str());
 }
 
 bool RoboteqController::send_query(const std::string &query, std::string *value)
