@@ -38,6 +38,6 @@ int main(int argc, char **argv){
 	assert(test_controller.set_max_rpm(kTestMotorChannel, 100));
   assert(test_controller.motor_position_mode_velocity_command(1, 100));
 	assert(test_controller.set_operating_mode(kTestMotorChannel, RoboteqController::OPEN_LOOP_SPEED));
-  assert(test_controller.set_encoder_count(kTestEncoderChannel, 0));
+  assert(test_controller.encoder_count_command(kTestEncoderChannel, 0));
 	assert(test_controller.set_operating_mode(kTestMotorChannel, RoboteqController::CLOSED_LOOP_COUNT_POSITION));
 }

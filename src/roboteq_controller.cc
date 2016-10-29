@@ -20,12 +20,25 @@ const string RoboteqController::kTrailer = "\r\n";
 const string RoboteqController::kDelimiters = "\r\n";
 const int RoboteqController::kSafetyKey = 321654987;
 
-RoboteqController::RoboteqController(const string& port, const int baud_rate)
+RoboteqController::RoboteqController(const string& port, const int baud_rate) :
+  motor_serial_port_(port),
+  motor_serial_baud_rate_(baud_rate)
 {
-  ok_ = myd_serial_.Open(port, baud_rate, 8, 'N', 1);    
+  open_serial();
+}
+
+void RoboteqController::open_serial()
+{
   if (!ok_) {
-    cerr << "RoboteqController::RoboteqController: Failed to open myd_serial." << endl;
-    return;
+    ok_ = myd_serial_.Open(motor_serial_port_,
+                           motor_serial_baud_rate_,
+                           8,
+                           'N',
+                           1);    
+    if (!ok_) {
+      cerr << "RoboteqController::RoboteqController: Failed to open myd_serial." << endl;
+      return;
+    }
   }
 }
 
@@ -61,7 +74,7 @@ bool RoboteqController::set_echo(const bool on)
 {
   bool echo = true;
   if (!get_echo(&echo)) {
-    cerr << "RoboteqController::set_echo: Failed to get echo" << endl;
+    cerr << "RoboteqController::set_echo: Failed to get echo." << endl;
     return false;
   }
 
@@ -229,7 +242,7 @@ bool RoboteqController::get_configuration(const string &name, std::string *value
   return true;
 }
 
-bool RoboteqController::set_encoder_count(const int encoder_channel, const int encoder_count)
+bool RoboteqController::encoder_count_command(const int encoder_channel, const int encoder_count)
 {
   stringstream ss;
   ss << "C " << encoder_channel << " " << encoder_count;

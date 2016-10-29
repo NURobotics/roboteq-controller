@@ -34,9 +34,9 @@ int main(int argc, char **argv){
 	roboteq_controller.set_motor_decceleration(kMotorChannel, 170);
 	roboteq_controller.set_default_position_velocity(kMotorChannel, 100);
 	roboteq_controller.set_max_rpm(kMotorChannel, 100);
-  roboteq_controller.motor_position_mode_velocity_command(1, 100);
+  roboteq_controller.motor_position_mode_velocity_command(kMotorChannel, 100);
 	roboteq_controller.set_operating_mode(kMotorChannel, RoboteqController::OPEN_LOOP_SPEED);
-  roboteq_controller.set_encoder_count(kEncoderChannel, 0);
+  roboteq_controller.encoder_count_command(kEncoderChannel, 0);
 	roboteq_controller.set_operating_mode(kMotorChannel, RoboteqController::CLOSED_LOOP_COUNT_POSITION);
 
   int i;

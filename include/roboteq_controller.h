@@ -53,6 +53,8 @@ public:
   RoboteqController(const std::string& port, const int baud_rate);
   ~RoboteqController() { myd_serial_.Close(); }
 
+  void open_serial();
+
   bool set_echo(const bool on);
 
   bool set_encoder_usage(const int encoder_channel,
@@ -85,7 +87,7 @@ public:
   bool motor_position_mode_velocity_command(const int motor_channel, const int rpm);
   bool motor_absolute_position_command(const int motor_channel, const int count);
 
-  bool set_encoder_count(const int encoder_channel, const int encoder_count);
+  bool encoder_count_command(const int encoder_channel, const int encoder_count);
 
   bool check_valid_response() {
     if (ok_) {
@@ -145,12 +147,12 @@ public:
 
   bool get_configuration(const std::string &name, std::string *value);
 
-  bool is_ok() const { return ok_; };
+  bool ok() const { return ok_; };
 
 private:
   MydSerial myd_serial_;
-  std::string port_;
-  int baud_rate_;
+  std::string motor_serial_port_;
+  int motor_serial_baud_rate_;
   bool ok_;
 
 };
